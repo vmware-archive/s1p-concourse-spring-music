@@ -1,0 +1,18 @@
+GIT_REPO: git@github.com:bbyers-pivotal/concourse-spring-music.git
+GIT_BRANCH: master
+CF_API: https://api.local.pcfdev.io
+CF_USER: admin
+CF_PASS: admin
+CF_DEV_ORG: pcfdev-org
+CF_DEV_SPACE: development
+CF_TEST_ORG: pcfdev-org
+CF_TEST_SPACE: test
+CF_UAT_ORG: pcfdev-org
+CF_UAT_SPACE: uat
+CF_PROD_ORG: pcfdev-org
+CF_PROD_SPACE: prod
+S3_ACCESS_KEY_ID: REPLACE_ME
+S3_SECRET_ACCESS_KEY: REPLACE_ME
+S3_BUCKET: REPLACE_ME
+MUSIC_PRIVATE_KEY: |
+
