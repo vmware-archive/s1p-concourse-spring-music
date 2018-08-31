@@ -45,13 +45,23 @@ resources:
     space: {{CF_PROD_SPACE}}
     skip_cert_check: true
 
+#- name: version
+#  type: semver
+#  source:
+#    bucket: {{S3_BUCKET}}
+#    key: {{S3_VERSION_FILE}}
+#    access_key_id: {{S3_ACCESS_KEY_ID}}
+#    secret_access_key: {{S3_SECRET_ACCESS_KEY}}
+#    initial_version: 1.0.0
+
 - name: version
   type: semver
   source:
-    bucket: {{S3_BUCKET}}
-    key: {{S3_VERSION_FILE}}
-    access_key_id: {{S3_ACCESS_KEY_ID}}
-    secret_access_key: {{S3_SECRET_ACCESS_KEY}}
+    driver: git
+    uri: {{GIT_REPO}}
+    branch: version
+    file: version
+    private_key: {{GIT_PRIVATE_KEY}}
     initial_version: 1.0.0
 
 - name: release-candidate
@@ -78,6 +88,15 @@ resources:
     access_key_id: {{S3_ACCESS_KEY_ID}}
     secret_access_key: {{S3_SECRET_ACCESS_KEY}}
 
+- name: artifactory-repository
+  type: artifactory
+  check_every: 1m
+  source:
+    endpoint: http://ci.google.pcf.cloud:8081/artifactory
+    repository: "/gradle-release-local/spring-music"
+    regex: "spring-music-(?<version>.*).jar"
+    username: admin
+    password: S1pP$ssW0rd!
 
 jobs:
   - name: unit-tests
@@ -108,6 +127,8 @@ jobs:
         tag: version/number
     - put: version
       params: {file: version/number}
+    - put: artifactory-repository
+      params: { file: artifact-dir/spring-music*.jar }
 
   - name: integration-tests
     serial_groups: [version]
@@ -116,7 +137,7 @@ jobs:
       - get: version
         passed: [build-artifact]
         trigger: true
-      - get: release-candidate
+      - get: artifactory-repository
         passed: [build-artifact]
       - get: git-repo
         passed: [build-artifact]

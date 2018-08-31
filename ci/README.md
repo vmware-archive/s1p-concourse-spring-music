@@ -100,9 +100,9 @@ Basically it just runs "gradle test" against the music-repo
     S3_SECRET_ACCESS_KEY: REPLACE_ME
     S3_BUCKET: REPLACE_ME
     MUSIC_PRIVATE_KEY: |
-      -----BEGIN RSA PRIVATE KEY-----
-      REPLACE_ME
-      -----END RSA PRIVATE KEY-----
+      -----BEGIN FAKE RSA PRIVATE KEY-----
+      FAKE_REPLACE_ME
+      -----END FAKE RSA PRIVATE KEY-----
     ```
 
   * `fly -t lite set-pipeline -p spring-music -c ci/spring-music.yml -l spring-music-pcfdev-credentials.yml`
