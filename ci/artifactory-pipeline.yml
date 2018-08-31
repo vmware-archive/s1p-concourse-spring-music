@@ -46,8 +46,8 @@ resources:
   type: semver
   source:
     driver: git
-    uri: {{GIT_VERSION_REPO}}
-    branch: master
+    uri: {{GIT_REPO}}
+    branch: version
     file: version
     private_key: {{GIT_PRIVATE_KEY}}
     initial_version: 1.0.0
