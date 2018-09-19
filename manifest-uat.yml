@@ -1,6 +1,5 @@
 ---
 applications:
-- name: spring-music-uat
+- name: mds-spring-music-uat
   memory: 1G
-  host: s1p-11-spring-music-uat
   buildpack: java_buildpack

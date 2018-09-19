@@ -1,6 +1,5 @@
 ---
 applications:
-- name: spring-music-test
+- name: mds-spring-music-test
   memory: 1G
-  host: s1p-11-spring-music-test
   buildpack: java_buildpack

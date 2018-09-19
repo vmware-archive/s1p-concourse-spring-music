@@ -19,3 +19,6 @@ build/
 
 *.log*
 /classes/
+
+pipeline-params.yml
+.DS_Store
