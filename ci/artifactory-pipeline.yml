@@ -116,7 +116,7 @@ jobs:
   - put: deploy-test-app
     params:
       manifest: git-repo/manifest-test.yml
-      current_app_name: mds-spring-music-test
+      current_app_name: brian-spring-music-test
       path: release-candidate/spring-music*.jar
   - task: verify
     file: git-repo/ci/tasks/verify-test.yml
@@ -137,7 +137,7 @@ jobs:
   - put: deploy-uat-app
     params:
       manifest: git-repo/manifest-uat.yml
-      current_app_name: mds-spring-music-uat
+      current_app_name: brian-spring-music-uat
       path: release-candidate/spring-music*.jar
 
 - name: ship-it
@@ -163,30 +163,40 @@ jobs:
   - put: deploy-production-app
     params:
       manifest: git-repo/manifest-prod.yml
-      current_app_name: mds-spring-music
+      current_app_name: brian-spring-music
       path: final-dir/spring-music*.jar
 
 #TODO - Make BLUE/GREEN work with Artifactory
-# - name: restart
-#   plan:
-#   - aggregate:
-#     - get: git-repo
-#     - get: version
-#       passed: [patch]
-#       trigger: true
-#     - get: blue-green-file
-#   - task: restart-it
-#     file: git-repo/ci/tasks/restart.yml
-#     params:
-#       GIT_REPO: ((GIT_REPO))
-#       PASSWORD: ((GIT_PERSONAL_ACCESS_TOKEN))
-#       S3_BUCKET: ((S3_BUCKET))
-#       S3_BLUE_GREEN_FILE: ((S3_BLUE_GREEN))
-#       S3_ACCESS_KEY_ID: ((S3_ACCESS_KEY_ID))
-#       S3_SECRET_ACCESS_KEY: ((S3_SECRET_ACCESS_KEY))
-#   - put: blue-green-file
-#     params:
-#       file: blue-green-output/*
+- name: restart
+  plan:
+  - aggregate:
+    - get: git-repo
+  - task: restart-it
+    file: git-repo/ci/tasks/restart.yml
+    params:
+      PASSWORD: ((GIT_PERSONAL_ACCESS_TOKEN))
+      GIT_REPO_URL: ((GIT_REPO_URL))
+
+- name: makeItBlue
+  plan:
+  - aggregate:
+    - get: git-repo
+  - task: changeIt
+    file: git-repo/ci/tasks/makeItBlue.yml
+    params:
+      PASSWORD: ((GIT_PERSONAL_ACCESS_TOKEN))
+      GIT_REPO_URL: ((GIT_REPO_URL))
+
+- name: makeItGreen
+  plan:
+  - aggregate:
+    - get: git-repo
+  - task: changeIt
+    file: git-repo/ci/tasks/makeItGreen.yml
+    params:
+      PASSWORD: ((GIT_PERSONAL_ACCESS_TOKEN))
+      GIT_REPO_URL: ((GIT_REPO_URL))
+
 
 - name: major
   serial_groups: [ version ]
