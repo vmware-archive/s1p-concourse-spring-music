@@ -2,5 +2,5 @@
 applications:
 - name: spring-music-dev
   memory: 1G
-  host: s1p-11-spring-music-dev
-  buildpack: java_buildpack
+  host: spring-music-dev
+  buildpack: java_buildpack_offline

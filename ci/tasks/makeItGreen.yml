@@ -10,7 +10,7 @@ inputs:
   - name: git-repo
 
 run:
-  path: git-repo/ci/tasks/restart.sh
+  path: git-repo/ci/tasks/makeItGreen.sh
 
 params:
   GIT_REPO_URL:

@@ -1,5 +1,5 @@
 ---
 applications:
-- name: mds-spring-music
+- name: brian-spring-music
   memory: 1G
   buildpack: java_buildpack
