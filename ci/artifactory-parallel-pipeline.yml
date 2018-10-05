@@ -1,0 +1,216 @@
+resource_types:
+- name: artifactory
+  type: docker-image
+  source:
+    repository: pivotalservices/artifactory-resource
+
+resources:
+- name: git-repo
+  type: git
+  source:
+    uri: ((GIT_REPO))
+    branch: master
+    private_key: ((GIT_PRIVATE_KEY))
+
+- name: deploy-test-app
+  type: cf
+  source:
+    api: ((CF_API))
+    username: ((CF_USER))
+    password: ((CF_PASS))
+    organization: ((CF_TEST_ORG))
+    space: ((CF_TEST_SPACE))
+    skip_cert_check: true
+
+- name: deploy-uat-app
+  type: cf
+  source:
+    api: ((CF_API))
+    username: ((CF_USER))
+    password: ((CF_PASS))
+    organization: ((CF_UAT_ORG))
+    space: ((CF_UAT_SPACE))
+    skip_cert_check: true
+
+- name: deploy-production-app
+  type: cf
+  source:
+    api: ((CF_API))
+    username: ((CF_USER))
+    password: ((CF_PASS))
+    organization: ((CF_PROD_ORG))
+    space: ((CF_PROD_SPACE))
+    skip_cert_check: true
+
+- name: version
+  type: semver
+  source:
+    driver: git
+    uri: ((GIT_REPO))
+    branch: version
+    file: version
+    private_key: ((GIT_PRIVATE_KEY))
+    initial_version: 1.0.0
+
+- name: release-candidate
+  type: artifactory
+  check_every: 1m
+  source:
+    endpoint: ((ARTIFACTORY_URL))
+    repository: ((ARTIFACTORY_REPO))
+    regex: ((ARTIFACTORY_REGEX))
+    username: ((ARTIFACTORY_USER))
+    password: ((ARTIFACTORY_PASS))
+
+- name: production-release
+  type: artifactory
+  check_every: 1m
+  source:
+    endpoint: ((ARTIFACTORY_URL))
+    repository: ((ARTIFACTORY_REPO))
+    regex: ((ARTIFACTORY_REGEX))
+    username: ((ARTIFACTORY_USER))
+    password: ((ARTIFACTORY_PASS))
+
+jobs:
+- name: unit-tests
+  plan:
+  - get: git-repo
+    trigger: true
+  - task: unit
+    file: git-repo/ci/tasks/unit.yml
+
+- name: build-artifact
+  serial_groups: [version]
+  serial: true
+  plan:
+  - get: git-repo
+    passed: [unit-tests]
+    trigger: true
+  - get: version
+    params: { pre: rc }
+  - task: build-artifact
+    file: git-repo/ci/tasks/build-artifact.yml
+    timeout: 5m
+  - put: release-candidate
+    params:
+      file: artifact-dir/spring-music*.jar
+  - put: git-repo
+    params:
+      repository: git-repo
+      tag: version/number
+  - put: version
+    params: {file: version/number}
+
+- name: integration-tests
+  serial_groups: [version]
+  plan:
+  - aggregate:
+    - get: version
+      passed: [build-artifact]
+      trigger: true
+    - get: release-candidate
+      passed: [build-artifact]
+    - get: git-repo
+      passed: [build-artifact]
+  - put: deploy-test-app
+    params:
+      manifest: git-repo/manifest-test.yml
+      current_app_name: spring-music-test
+      path: release-candidate/spring-music*.jar
+  - task: verify
+    file: git-repo/ci/tasks/verify-test.yml
+    params:
+      CONCOURSE_DEMO_URL: ((VERIFY_URL))
+
+- name: promote-to-uat
+  serial_groups: [version]
+  plan:
+  - aggregate:
+    - get: release-candidate
+      passed: [build-artifact]
+
+      trigger: true
+    - get: version
+    - get: git-repo
+  - put: deploy-uat-app
+    params:
+      manifest: git-repo/manifest-uat.yml
+      current_app_name: spring-music-uat
+      path: release-candidate/spring-music*.jar
+
+- name: ship-it
+  serial_groups: [version]
+  serial: true
+  plan:
+  - aggregate:
+    - get: release-candidate
+      passed: [promote-to-uat, integration-tests]
+    - get: version
+      params: { bump: final }
+    - get: git-repo
+  - task: prepare-final
+    file: git-repo/ci/tasks/prepare-final.yml
+    params:
+      base_name: spring-music
+  - put: production-release
+    params:
+      file: final-dir/spring-music*.jar
+  - put: deploy-production-app
+    params:
+      manifest: git-repo/manifest-prod.yml
+      current_app_name: spring-music-prod
+      path: final-dir/spring-music*.jar
+
+#TODO - Make BLUE/GREEN work with Artifactory
+- name: restart
+  plan:
+  - aggregate:
+    - get: git-repo
+  - task: restart-it
+    file: git-repo/ci/tasks/restart.yml
+    params:
+      PASSWORD: ((GIT_PERSONAL_ACCESS_TOKEN))
+      GIT_REPO_URL: ((GIT_REPO_URL))
+
+- name: makeItBlue
+  plan:
+  - aggregate:
+    - get: git-repo
+  - task: changeIt
+    file: git-repo/ci/tasks/makeItBlue.yml
+    params:
+      PASSWORD: ((GIT_PERSONAL_ACCESS_TOKEN))
+      GIT_REPO_URL: ((GIT_REPO_URL))
+
+- name: makeItGreen
+  plan:
+  - aggregate:
+    - get: git-repo
+  - task: changeIt
+    file: git-repo/ci/tasks/makeItGreen.yml
+    params:
+      PASSWORD: ((GIT_PERSONAL_ACCESS_TOKEN))
+      GIT_REPO_URL: ((GIT_REPO_URL))
+
+
+- name: major
+  serial_groups: [ version ]
+  plan:
+  - put: version
+    params: { bump: major, pre: rc }
+
+- name: minor
+  serial_groups: [ version ]
+  plan:
+  - put: version
+    params: { bump: minor, pre: rc }
+
+- name: patch
+  serial_groups: [ version ]
+  plan:
+  - get: version
+    passed: [ ship-it ]
+    trigger: true
+  - put: version
+    params: { bump: patch }
